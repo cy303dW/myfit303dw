@@ -369,13 +369,46 @@ async function sendToSheet(payload){
   try{await sheetPost(payload);await flushQueue();setSyncStatus('ok','Synced ✓');}
   catch(e){enqueue(payload);setSyncStatus('error','Offline — queued');}
 }
+
+// Write all goal key/value rows to Sheets (delete old ones first via a 'replace' action)
+async function syncGoalsToSheet(){
+  setSyncStatus('syncing','Syncing…');
+  const rows=[
+    ['startWeight',    goals.startWeight??''],
+    ['targetWeight',   goals.targetWeight??''],
+    ['dailySteps',     goals.dailySteps??''],
+    ['workoutFreq',    goals.workoutFreq||'weekly'],
+    ['workoutsPerWeek',goals.workoutsPerWeek??''],
+    ['workoutsPerMonth',goals.workoutsPerMonth??''],
+    ['cardioMinsPerWeek',goals.cardioMinsPerWeek??''],
+    ['calsBurnedPerWeek',goals.calsBurnedPerWeek??'']
+  ];
+  try{
+    await sheetPost({type:'Goals',action:'replace',rows});
+    await flushQueue();setSyncStatus('ok','Synced ✓');
+  }catch(e){
+    // Queue each row for later
+    enqueue({type:'Goals',action:'replace',rows});
+    setSyncStatus('error','Offline — queued');
+  }
+}
+
 async function syncAll(){
   setSyncStatus('syncing','Syncing…');
   try{
-    const[wR,bR,cR]=await Promise.all([sheetGet('Workouts'),sheetGet('Body'),sheetGet('Cardio')]);
+    const[wR,bR,cR,gR]=await Promise.all([sheetGet('Workouts'),sheetGet('Body'),sheetGet('Cardio'),sheetGet('Goals')]);
     workouts=wR.map(r=>({id:Number(r['ID']),date:r['Date'],exercise:r['Exercise'],sets:Number(r['Sets']),reps:Number(r['Reps']),weight:Number(r['Weight (kg)']),cals:Number(r['Calories Burned'])||0,notes:r['Notes']||''})).sort((a,b)=>b.id-a.id);
     bodyLogs=bR.map(r=>({id:Number(r['ID']),date:r['Date'],weight:Number(r['Weight (kg)'])||null,fat:Number(r['Body Fat (%)'])||null})).sort((a,b)=>b.id-a.id);
     cardioLogs=cR.map(r=>({id:Number(r['ID']),date:r['Date'],steps:Number(r['Steps'])||0,activity:r['Activity']||'',duration:Number(r['Duration (min)'])||0,distance:Number(r['Distance (km)'])||null,cals:Number(r['Calories Burned'])||0})).sort((a,b)=>b.id-a.id);
+    // Parse goals from Key/Value rows
+    if(gR.length){
+      const parsed=parseGoals(gR);
+      // Only apply if at least one meaningful value exists
+      if(parsed.startWeight||parsed.targetWeight||parsed.dailySteps||parsed.workoutsPerWeek||parsed.workoutsPerMonth||parsed.cardioMinsPerWeek||parsed.calsBurnedPerWeek){
+        goals=parsed;freqMode=goals.workoutFreq||'weekly';
+        save('fl_goals',goals);
+      }
+    }
     save('fl_workouts',workouts);save('fl_body',bodyLogs);save('fl_cardio',cardioLogs);
     await flushQueue();setSyncStatus('ok','Synced to Google Sheets ✓');toast('Synced ✓');
     refreshCurrentTab();
@@ -762,7 +795,7 @@ function saveGoals(){
     calsBurnedPerWeek:parseInt(document.getElementById('g-cals-burned').value)||null
   };
   save('fl_goals',goals);toast('Goals saved ✓');
-  sendToSheet({type:'Goals',action:'add',row:[Date.now(),'goals',JSON.stringify(goals)]});
+  syncGoalsToSheet();
 }
 function populateGoalFields(){
   if(goals.startWeight)document.getElementById('g-start-weight').value=goals.startWeight;
