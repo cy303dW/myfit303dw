@@ -458,6 +458,20 @@ function parseCardio(rows){
     cals:Number(r['Calories Burned'])||0
   })).filter(r=>r.steps||r.activity).sort((a,b)=>b.id-a.id);
 }
+function parseGoals(rows){
+  const map={};
+  rows.forEach(r=>{ if(r['Key']) map[String(r['Key']).trim()]=r['Value']; });
+  return {
+    startWeight:Number(map.startWeight)||null,
+    targetWeight:Number(map.targetWeight)||null,
+    dailySteps:Number(map.dailySteps)||null,
+    workoutFreq:String(map.workoutFreq||'weekly'),
+    workoutsPerWeek:Number(map.workoutsPerWeek)||null,
+    workoutsPerMonth:Number(map.workoutsPerMonth)||null,
+    cardioMinsPerWeek:Number(map.cardioMinsPerWeek)||null,
+    calsBurnedPerWeek:Number(map.calsBurnedPerWeek)||null
+  };
+}
 
 function processFile(file){
   const name=file.name.toLowerCase();
@@ -470,12 +484,12 @@ function processFile(file){
       const sheet=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
       const objs=sheetToObjects(rows);
-      // Try to detect which sheet it is from headers
       const headers=rows[0]?.map(h=>String(h).trim())||[];
-      let parsed={workouts:null,body:null,cardio:null};
+      let parsed={workouts:null,body:null,cardio:null,goals:null};
       if(headers.includes('Exercise'))parsed.workouts=parseWorkouts(objs);
       else if(headers.includes('Body Fat (%)'))parsed.body=parseBody(objs);
       else if(headers.includes('Activity'))parsed.cardio=parseCardio(objs);
+      else if(headers.includes('Key')&&headers.includes('Value'))parsed.goals=parseGoals(objs);
       showImportPreview(parsed,file.name);
     };
     reader.readAsText(file);
@@ -484,20 +498,17 @@ function processFile(file){
     reader.onload=e=>{
       const data=new Uint8Array(e.target.result);
       const wb=XLSX.read(data,{type:'array',cellDates:false});
-      const parsed={workouts:null,body:null,cardio:null};
+      const parsed={workouts:null,body:null,cardio:null,goals:null};
       wb.SheetNames.forEach(name=>{
         const sheet=wb.Sheets[name];
         const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
         const objs=sheetToObjects(rows);
         const lower=name.toLowerCase();
-        if(lower.includes('workout'))parsed.workouts=parseWorkouts(objs);
-        else if(lower.includes('body'))parsed.body=parseBody(objs);
-        else if(lower.includes('cardio'))parsed.cardio=parseCardio(objs);
-        // Also try by headers if name doesn't match
         const headers=rows[0]?.map(h=>String(h).trim())||[];
-        if(!parsed.workouts&&headers.includes('Exercise'))parsed.workouts=parseWorkouts(objs);
-        if(!parsed.body&&headers.includes('Body Fat (%)'))parsed.body=parseBody(objs);
-        if(!parsed.cardio&&headers.includes('Activity'))parsed.cardio=parseCardio(objs);
+        if(lower.includes('workout')||(!parsed.workouts&&headers.includes('Exercise')))parsed.workouts=parseWorkouts(objs);
+        else if(lower.includes('body')||(!parsed.body&&headers.includes('Body Fat (%)')))parsed.body=parseBody(objs);
+        else if(lower.includes('cardio')||(!parsed.cardio&&headers.includes('Activity')))parsed.cardio=parseCardio(objs);
+        else if(lower.includes('goal')||(!parsed.goals&&headers.includes('Key')&&headers.includes('Value')))parsed.goals=parseGoals(objs);
       });
       showImportPreview(parsed,file.name);
     };
@@ -511,6 +522,7 @@ function showImportPreview(parsed,filename){
   if(parsed.workouts!==null)rows.push({name:'Workouts',count:parsed.workouts.length,ok:parsed.workouts.length>0});
   if(parsed.body!==null)rows.push({name:'Body metrics',count:parsed.body.length,ok:parsed.body.length>0});
   if(parsed.cardio!==null)rows.push({name:'Cardio',count:parsed.cardio.length,ok:parsed.cardio.length>0});
+  if(parsed.goals!==null)rows.push({name:'Goals',count:1,ok:true});
 
   if(!rows.length){
     toast('Could not read any recognised data from this file',true);
@@ -535,6 +547,7 @@ function confirmImport(){
   if(pendingImport.workouts!==null){workouts=pendingImport.workouts;save('fl_workouts',workouts);}
   if(pendingImport.body!==null){bodyLogs=pendingImport.body;save('fl_body',bodyLogs);}
   if(pendingImport.cardio!==null){cardioLogs=pendingImport.cardio;save('fl_cardio',cardioLogs);}
+  if(pendingImport.goals!==null){goals=pendingImport.goals;save('fl_goals',goals);freqMode=goals.workoutFreq||'weekly';}
   pendingImport=null;
   document.getElementById('import-preview').classList.remove('show');
   document.getElementById('file-input').value='';
@@ -855,13 +868,28 @@ function downloadCSV(filename,csv){
 function exportWorkouts(){downloadCSV('fitlog_workouts.csv',toCSV(['Date','Exercise','Sets','Reps','Weight (kg)','Calories Burned','Notes'],workouts.map(w=>[w.date,w.exercise,w.sets,w.reps,w.weight,w.cals||'',w.notes])));toast('Workouts CSV downloaded ✓');}
 function exportBody(){downloadCSV('fitlog_body.csv',toCSV(['Date','Weight (kg)','Body Fat (%)'],bodyLogs.map(b=>[b.date,b.weight||'',b.fat||''])));toast('Body CSV downloaded ✓');}
 function exportCardio(){downloadCSV('fitlog_cardio.csv',toCSV(['Date','Steps','Activity','Duration (min)','Distance (km)','Calories Burned'],cardioLogs.map(c=>[c.date,c.steps,c.activity,c.duration,c.distance||'',c.cals||''])));toast('Cardio CSV downloaded ✓');}
-function exportAll(){exportWorkouts();setTimeout(exportBody,300);setTimeout(exportCardio,600);}
+function exportGoals(){
+  const rows=[
+    ['startWeight',goals.startWeight||''],
+    ['targetWeight',goals.targetWeight||''],
+    ['dailySteps',goals.dailySteps||''],
+    ['workoutFreq',goals.workoutFreq||'weekly'],
+    ['workoutsPerWeek',goals.workoutsPerWeek||''],
+    ['workoutsPerMonth',goals.workoutsPerMonth||''],
+    ['cardioMinsPerWeek',goals.cardioMinsPerWeek||''],
+    ['calsBurnedPerWeek',goals.calsBurnedPerWeek||'']
+  ];
+  downloadCSV('fitlog_goals.csv',toCSV(['Key','Value'],rows));
+  toast('Goals CSV downloaded ✓');
+}
+function exportAll(){exportWorkouts();setTimeout(exportBody,300);setTimeout(exportCardio,600);setTimeout(exportGoals,900);}
 
 function renderExport(){
   document.getElementById('export-cards').innerHTML=`
     <div class="export-row"><div><div class="export-name">Workouts</div><div class="export-count">${workouts.length} entries</div></div><button class="export-dl" onclick="exportWorkouts()">Download CSV</button></div>
     <div class="export-row"><div><div class="export-name">Body metrics</div><div class="export-count">${bodyLogs.length} entries</div></div><button class="export-dl" onclick="exportBody()">Download CSV</button></div>
-    <div class="export-row"><div><div class="export-name">Cardio</div><div class="export-count">${cardioLogs.length} entries</div></div><button class="export-dl" onclick="exportCardio()">Download CSV</button></div>`;
+    <div class="export-row"><div><div class="export-name">Cardio</div><div class="export-count">${cardioLogs.length} entries</div></div><button class="export-dl" onclick="exportCardio()">Download CSV</button></div>
+    <div class="export-row"><div><div class="export-name">Goals</div><div class="export-count">1 entry</div></div><button class="export-dl" onclick="exportGoals()">Download CSV</button></div>`;
 }
 
 // ── Init ─────────────────────────────────────────────────────
