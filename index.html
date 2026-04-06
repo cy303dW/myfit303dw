@@ -397,9 +397,9 @@ async function syncAll(){
   setSyncStatus('syncing','Syncing…');
   try{
     const[wR,bR,cR,gR]=await Promise.all([sheetGet('Workouts'),sheetGet('Body'),sheetGet('Cardio'),sheetGet('Goals')]);
-    workouts=wR.map(r=>({id:Number(r['ID']),date:r['Date'],exercise:r['Exercise'],sets:Number(r['Sets']),reps:Number(r['Reps']),weight:Number(r['Weight (kg)']),cals:Number(r['Calories Burned'])||0,notes:r['Notes']||''})).sort((a,b)=>b.id-a.id);
-    bodyLogs=bR.map(r=>({id:Number(r['ID']),date:r['Date'],weight:Number(r['Weight (kg)'])||null,fat:Number(r['Body Fat (%)'])||null})).sort((a,b)=>b.id-a.id);
-    cardioLogs=cR.map(r=>({id:Number(r['ID']),date:r['Date'],steps:Number(r['Steps'])||0,activity:r['Activity']||'',duration:Number(r['Duration (min)'])||0,distance:Number(r['Distance (km)'])||null,cals:Number(r['Calories Burned'])||0})).sort((a,b)=>b.id-a.id);
+    workouts=wR.map(r=>({id:Number(r['ID']),date:parseDate(r['Date']),exercise:r['Exercise'],sets:Number(r['Sets']),reps:Number(r['Reps']),weight:Number(r['Weight (kg)']),cals:Number(r['Calories Burned'])||0,notes:r['Notes']||''})).sort((a,b)=>b.id-a.id);
+    bodyLogs=bR.map(r=>({id:Number(r['ID']),date:parseDate(r['Date']),weight:Number(r['Weight (kg)'])||null,fat:Number(r['Body Fat (%)'])||null})).sort((a,b)=>b.id-a.id);
+    cardioLogs=cR.map(r=>({id:Number(r['ID']),date:parseDate(r['Date']),steps:Number(r['Steps'])||0,activity:r['Activity']||'',duration:Number(r['Duration (min)'])||0,distance:Number(r['Distance (km)'])||null,cals:Number(r['Calories Burned'])||0})).sort((a,b)=>b.id-a.id);
     // Parse goals from Key/Value rows
     if(gR.length){
       const parsed=parseGoals(gR);
@@ -437,18 +437,21 @@ function onFileSelect(e){const f=e.target.files[0];if(f)processFile(f);}
 
 function parseDate(val){
   if(!val)return '';
-  // Excel serial date number
+  // Excel/Sheets serial number
   if(typeof val==='number'){
     const d=new Date(Math.round((val-25569)*86400*1000));
     return d.toISOString().slice(0,10);
   }
   const s=String(val).trim();
-  // Already ISO
+  // Already ISO YYYY-MM-DD
   if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
-  // Try parsing
+  // DD/MM/YYYY (common Sheets locale format)
+  const dmy=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if(dmy)return dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0');
+  // Try native parse as last resort
   const d=new Date(s);
-  if(!isNaN(d))return d.toISOString().slice(0,10);
-  return s;
+  if(!isNaN(d.getTime()))return d.toISOString().slice(0,10);
+  return '';
 }
 
 function sheetToObjects(rows){
