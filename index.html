@@ -267,7 +267,7 @@ select option{background:var(--surface2);}
     </div>
     <div class="goal-section-title">Daily steps goal</div>
     <div class="card">
-      <div class="form-group"><label class="form-label">Daily steps target</label><input id="g-steps" type="number" placeholder="e.g. 10000"></div>
+      <div class="form-group"><label class="form-label">Daily steps target (ring tracks weekly total)</label><input id="g-steps" type="number" placeholder="e.g. 10000"></div>
     </div>
     <div class="goal-section-title">Workout goal</div>
     <div class="card">
@@ -495,22 +495,23 @@ function onFileSelect(e){const f=e.target.files[0];if(f)processFile(f);}
 
 function parseDate(val){
   if(!val)return '';
-  // Excel/Sheets serial number — these are UTC-based so use UTC methods
+  // Excel/Sheets serial number
   if(typeof val==='number'){
     const d=new Date(Math.round((val-25569)*86400*1000));
     return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
   }
   const s=String(val).trim();
-  // Already ISO YYYY-MM-DD
-  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
-  // DD/MM/YYYY (common Sheets locale format)
+  // ISO with time component e.g. "2026-04-06T00:00:00.000Z" — extract date part only, add noon to avoid rollback
+  if(/^\d{4}-\d{2}-\d{2}T/.test(s)){
+    const base=s.slice(0,10);
+    const d=new Date(base+'T12:00:00');
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  // Plain ISO YYYY-MM-DD — safe to use as-is
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  // DD/MM/YYYY
   const dmy=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
-  if(dmy)return dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0');
-  // Try native parse — append T12:00:00 to avoid UTC midnight rollback
-  const d=new Date(s+'T12:00:00');
-  if(!isNaN(d.getTime())){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-  return '';
-}
+  if(dmy)return dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0')}
 
 function sheetToObjects(rows){
   if(!rows||rows.length<2)return[];
@@ -707,22 +708,23 @@ function renderDashboard(){
   // Helper: safe ISO date compare
   const inRange=(date,from)=>{try{return date&&date>=from;}catch(e){return false;}};
 
-  // 1. Weight ring — overall progress from startWeight toward targetWeight (monthly slice)
+  // 1. Weight ring — overall progress from startWeight to targetWeight
   if(goals.startWeight&&goals.targetWeight&&goals.startWeight!==goals.targetWeight){
     const latestW=bodyLogs[0]?.weight??goals.startWeight;
-    const totalDiff=Math.abs(goals.startWeight-goals.targetWeight);
-    const monthlyTarget=totalDiff/12;
-    // Use startWeight as monthly base if no prior-month entry exists
-    const priorEntries=bodyLogs.filter(b=>b.date&&b.date<thisMonthStart()&&b.weight);
-    const baseW=priorEntries.length?priorEntries[0].weight:goals.startWeight;
-    const diff=goals.startWeight>goals.targetWeight?(baseW-latestW):(latestW-baseW);
-    rings.push(ringCard('Weight',diff/monthlyTarget*100,latestW.toFixed(1),goals.targetWeight,'#c8f04a','kg'));
+    const total=Math.abs(goals.startWeight-goals.targetWeight);
+    const done=goals.startWeight>goals.targetWeight
+      ?(goals.startWeight-latestW)  // losing weight
+      :(latestW-goals.startWeight); // gaining weight
+    const pct=Math.max(0,done/total*100);
+    rings.push(ringCard('Weight',pct,latestW.toFixed(1),goals.targetWeight,'#c8f04a','kg'));
   } else rings.push(emptyRing('Weight'));
 
-  // 2. Steps ring — today vs daily target
+  // 2. Steps ring — weekly total vs weekly target (daily x 7)
   if(goals.dailySteps){
-    const s=cardioLogs.filter(c=>c.date===today()).reduce((a,b)=>a+(b.steps||0),0);
-    rings.push(ringCard('Steps',s/goals.dailySteps*100,s.toLocaleString(),goals.dailySteps.toLocaleString(),'#5af0aa'));
+    const ws=thisWeekStart();
+    const weeklyTarget=goals.dailySteps*7;
+    const s=cardioLogs.filter(c=>inRange(c.date,ws)).reduce((a,b)=>a+(parseInt(b.steps)||0),0);
+    rings.push(ringCard('Steps',s/weeklyTarget*100,s.toLocaleString(),(weeklyTarget).toLocaleString(),'#5af0aa'));
   } else rings.push(emptyRing('Steps'));
 
   // 3. Workouts ring — this week or month, counting unique workout days
@@ -750,20 +752,23 @@ function renderDashboard(){
     rings.push(ringCard('Cal burned',cals/goals.calsBurnedPerWeek*100,cals,goals.calsBurnedPerWeek,'#ffaa5a','kcal'));
   } else rings.push(emptyRing('Cal burned'));
 
-  // 6. Year goal ring — total progress from startWeight toward targetWeight
+  // 6. Monthly weight ring — progress this month vs monthly target
   if(goals.startWeight&&goals.targetWeight&&goals.startWeight!==goals.targetWeight){
     const latestW=bodyLogs[0]?.weight??goals.startWeight;
-    const total=Math.abs(goals.startWeight-goals.targetWeight);
-    const done=Math.abs(goals.startWeight-latestW);
-    rings.push(ringCard('Year goal',done/total*100,done.toFixed(1),total.toFixed(1),'#ff5a5a','kg'));
-  } else rings.push(emptyRing('Year goal'));
+    const monthlyTarget=Math.abs(goals.startWeight-goals.targetWeight)/12;
+    const priorEntries=bodyLogs.filter(b=>b.date&&b.date<thisMonthStart()&&b.weight);
+    const baseW=priorEntries.length?priorEntries[0].weight:goals.startWeight;
+    const diff=goals.startWeight>goals.targetWeight?(baseW-latestW):(latestW-baseW);
+    const pct=Math.max(0,diff/monthlyTarget*100);
+    rings.push(ringCard('Monthly wt',pct,latestW.toFixed(1),(goals.startWeight>goals.targetWeight?(baseW-monthlyTarget).toFixed(1):(baseW+monthlyTarget).toFixed(1)),'#ff5a5a','kg'));
+  } else rings.push(emptyRing('Monthly wt'));
 
   document.getElementById('rings-grid').innerHTML=rings.join('');
   renderTodayPlanOnDashboard();
 
   const todayC=cardioLogs.filter(c=>c.date===today());
   const latestW=bodyLogs[0]?.weight;
-  const todaySteps=todayC.reduce((a,b)=>a+(b.steps||0),0);
+  const todaySteps=todayC.reduce((a,b)=>a+(parseInt(b.steps)||0),0);
   const todayEx=workouts.filter(w=>w.date===today()).length;
   const ws=thisWeekStart();
   const weekWorkouts=[...new Set(workouts.filter(w=>w.date>=ws).map(w=>w.date))].length;
