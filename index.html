@@ -366,7 +366,15 @@ select option{background:var(--surface2);}
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbzVRFtIooMCjeAhyWIBnhkY_A3tCb3pfa6ickKs0njPfPI4S5xvPAMHAQWhSvdBUdOqeA/exec';
 
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
-const fmt=d=>{try{return new Date(String(d)+'T00:00:00').toLocaleDateString('en-SG',{month:'short',day:'numeric'});}catch(e){return d;}};
+const fmt=d=>{
+  try{
+    const s=String(d).slice(0,10);
+    const [y,m,dy]=s.split('-').map(Number);
+    if(!y||!m||!dy)return d;
+    const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return dy+' '+months[m-1];
+  }catch(e){return d;}
+};
 const thisWeekStart=()=>{
   const d=new Date();
   const day=d.getDay(); // 0=Sun,1=Mon,...
@@ -457,7 +465,8 @@ async function syncAll(){
     const nn=v=>{const x=parseFloat(v);return isNaN(x)||x===0?null:x;};
     workouts=wR.map(r=>({id:n(r['ID'])||Date.now(),date:parseDate(r['Date']),exercise:String(r['Exercise']||''),sets:n(r['Sets']),reps:n(r['Reps']),weight:n(r['Weight (kg)']),cals:n(r['Calories Burned']),notes:String(r['Notes']||'')})).filter(r=>r.exercise).sort((a,b)=>b.id-a.id);
     bodyLogs=bR.map(r=>({id:n(r['ID'])||Date.now(),date:parseDate(r['Date']),weight:nn(r['Weight (kg)']),fat:nn(r['Body Fat (%)'])})).filter(r=>r.weight||r.fat).sort((a,b)=>b.id-a.id);
-    cardioLogs=cR.map(r=>({id:n(r['ID'])||Date.now(),date:parseDate(r['Date']),steps:n(r['Steps']),activity:String(r['Activity']||''),duration:n(r['Duration (min)']),distance:nn(r['Distance (km)']),cals:n(r['Calories Burned'])})).filter(r=>r.steps||r.activity).sort((a,b)=>b.id-a.id);
+    const safeSteps=v=>{const x=parseInt(v);return(!isNaN(x)&&x>0&&x<200000)?x:0;};
+    cardioLogs=cR.map(r=>({id:n(r['ID'])||Date.now(),date:parseDate(r['Date']),steps:safeSteps(r['Steps']),activity:String(r['Activity']||''),duration:n(r['Duration (min)']),distance:nn(r['Distance (km)']),cals:n(r['Calories Burned'])})).filter(r=>r.steps||r.activity).sort((a,b)=>b.id-a.id);
     // Parse goals from Key/Value rows
     if(gR.length){
       const parsed=parseGoals(gR);
@@ -468,6 +477,7 @@ async function syncAll(){
       }
     }
     save('fl_workouts',workouts);save('fl_body',bodyLogs);save('fl_cardio',cardioLogs);
+
     await flushQueue();setSyncStatus('ok','Synced to Google Sheets ✓');toast('Synced ✓');
     refreshCurrentTab();
   }catch(e){setSyncStatus('error','Could not reach Sheets');toast('Working offline',true);}
