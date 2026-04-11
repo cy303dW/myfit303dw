@@ -168,6 +168,18 @@ select option{background:var(--surface2);}
 .today-plan-title{font-size:11px;font-family:var(--mono);color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
 .today-plan-focus{font-size:20px;font-weight:600;margin-bottom:4px;}
 .today-plan-sub{font-size:12px;color:var(--muted);font-family:var(--mono);}
+
+/* Autocomplete */
+.ac-wrap{position:relative;}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);z-index:200;max-height:180px;overflow-y:auto;display:none;margin-top:2px;}
+.ac-list.show{display:block;}
+.ac-item{padding:10px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid var(--border);}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.active{background:var(--accent-dim);color:var(--accent);}
+
+/* Plan form link */
+.plan-link-btn{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:var(--mono);color:var(--blue);text-decoration:none;padding:3px 8px;border-radius:999px;border:1px solid rgba(90,175,255,0.3);background:rgba(90,175,255,0.08);flex-shrink:0;}
+.plan-link-btn:hover{background:rgba(90,175,255,0.15);}
 </style>
 </head>
 <body>
@@ -200,7 +212,15 @@ select option{background:var(--surface2);}
   <div class="section" id="tab-workout">
     <div class="card">
       <div class="card-label">Log exercise</div>
-      <div class="form-group"><label class="form-label">Exercise name</label><input id="w-exercise" placeholder="e.g. Bench press, Squat"></div>
+      <div class="form-group"><label class="form-label">Exercise name</label>
+        <div class="ac-wrap">
+          <input id="w-exercise" placeholder="e.g. Bench press, Squat" autocomplete="off"
+            oninput="showAC('w-exercise','ac-workout')"
+            onfocus="showAC('w-exercise','ac-workout')"
+            onblur="setTimeout(()=>hideAC('ac-workout'),150)">
+          <div class="ac-list" id="ac-workout"></div>
+        </div>
+      </div>
       <div class="form-row">
         <div><label class="form-label">Sets</label><input id="w-sets" type="number" min="1" value="3"></div>
         <div><label class="form-label">Reps</label><input id="w-reps" type="number" min="1" value="10"></div>
@@ -233,7 +253,15 @@ select option{background:var(--surface2);}
     <div class="card">
       <div class="card-label">Steps & cardio</div>
       <div class="form-group"><label class="form-label">Steps today</label><input id="c-steps" type="number" min="0" placeholder="e.g. 8000"></div>
-      <div class="form-group"><label class="form-label">Activity</label><input id="c-activity" placeholder="e.g. Running, Cycling"></div>
+      <div class="form-group"><label class="form-label">Activity</label>
+        <div class="ac-wrap">
+          <input id="c-activity" placeholder="e.g. Running, Cycling" autocomplete="off"
+            oninput="showAC('c-activity','ac-cardio')"
+            onfocus="showAC('c-activity','ac-cardio')"
+            onblur="setTimeout(()=>hideAC('ac-cardio'),150)">
+          <div class="ac-list" id="ac-cardio"></div>
+        </div>
+      </div>
       <div class="form-row">
         <div><label class="form-label">Duration (min)</label><input id="c-duration" type="number" min="0" placeholder="30"></div>
         <div><label class="form-label">Distance (km)</label><input id="c-distance" type="number" step="0.1" placeholder="optional"></div>
@@ -1050,11 +1078,14 @@ function renderPlan(){
   } else {
     exEl.innerHTML=todayPlan.exercises.map((ex,i)=>`
       <div class="plan-exercise-item">
-        <div>
+        <div style="flex:1;min-width:0;">
           <div class="plan-ex-name" style="${ex.done?'text-decoration:line-through;color:var(--muted)':''}">${ex.name}</div>
-          <div class="plan-ex-meta">${ex.sets?ex.sets+'×'+ex.reps:''}${ex.note?' · '+ex.note:''}</div>
+          <div class="plan-ex-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span>${ex.sets?ex.sets+'×'+ex.reps:''}${ex.note?' · '+ex.note:''}</span>
+            ${ex.url?`<a href="${ex.url}" target="_blank" rel="noopener" class="plan-link-btn">Form ↗</a>`:''}
+          </div>
         </div>
-        <div class="plan-ex-check ${ex.done?'done':''}" onclick="togglePlanExercise('${dk}',${i})">
+        <div class="plan-ex-check ${ex.done?'done':''}" onclick="togglePlanExercise('${dk}',${i})" style="margin-left:10px;">
           ${ex.done?'<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#0e0e10" stroke-width="2" fill="none" stroke-linecap="round"/></svg>':''}
         </div>
       </div>`).join('');
@@ -1097,14 +1128,15 @@ function renderPlanEditor(){
   const ed=document.getElementById('plan-exercises-editor');
   const exs=p.exercises||[];
   ed.innerHTML=exs.map((ex,i)=>`
-    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:flex-start;">
       <div style="flex:1;">
         <input value="${ex.name||''}" placeholder="Exercise name" oninput="updatePlanEx(${i},'name',this.value)" style="margin-bottom:4px;">
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:6px;margin-bottom:4px;">
           <input type="number" value="${ex.sets||''}" placeholder="Sets" oninput="updatePlanEx(${i},'sets',this.value)" style="width:70px;flex:none;">
           <input type="number" value="${ex.reps||''}" placeholder="Reps" oninput="updatePlanEx(${i},'reps',this.value)" style="width:70px;flex:none;">
           <input value="${ex.note||''}" placeholder="Note" oninput="updatePlanEx(${i},'note',this.value)">
         </div>
+        <input value="${ex.url||''}" placeholder="Reference URL (YouTube, Instagram, etc.)" oninput="updatePlanEx(${i},'url',this.value)" style="font-size:12px;">
       </div>
       <button onclick="removePlanEx(${i})" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:8px 4px;line-height:1;">×</button>
     </div>`).join('');
@@ -1170,6 +1202,37 @@ function renderTodayPlanOnDashboard(){
       <button onclick="showTab('plan',document.querySelector('.nav-btn:nth-child(6)'))" style="font-size:11px;font-family:var(--mono);color:var(--accent);background:none;border:none;cursor:pointer;">View ↗</button>
     </div>`;
   }
+}
+
+
+// ── Autocomplete ────────────────────────────────────────────
+function getWorkoutSuggestions(){
+  const fromPlan=Object.values(plan).flatMap(d=>(d.exercises||[]).map(e=>e.name)).filter(Boolean);
+  const fromHistory=workouts.map(w=>w.exercise).filter(Boolean);
+  return [...new Set([...fromPlan,...fromHistory].map(s=>s.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+}
+function getCardioSuggestions(){
+  return [...new Set(cardioLogs.map(c=>c.activity).filter(Boolean).map(s=>s.trim()))].sort((a,b)=>a.localeCompare(b));
+}
+function showAC(inputId, listId){
+  const input=document.getElementById(inputId);
+  const list=document.getElementById(listId);
+  if(!input||!list)return;
+  const val=input.value.trim().toLowerCase();
+  const suggestions=listId==='ac-workout'?getWorkoutSuggestions():getCardioSuggestions();
+  const filtered=val?suggestions.filter(s=>s.toLowerCase().includes(val)):suggestions;
+  if(!filtered.length){list.classList.remove('show');return;}
+  list.innerHTML=filtered.map(s=>`<div class="ac-item" onmousedown="selectAC('${inputId}','${listId}',this)">${s}</div>`).join('');
+  list.classList.add('show');
+}
+function hideAC(listId){
+  const list=document.getElementById(listId);
+  if(list)list.classList.remove('show');
+}
+function selectAC(inputId,listId,el){
+  const input=document.getElementById(inputId);
+  if(input)input.value=el.textContent;
+  hideAC(listId);
 }
 
 // ── Init ─────────────────────────────────────────────────────
