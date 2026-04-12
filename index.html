@@ -180,6 +180,52 @@ select option{background:var(--surface2);}
 /* Plan form link */
 .plan-link-btn{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:var(--mono);color:var(--blue);text-decoration:none;padding:3px 8px;border-radius:999px;border:1px solid rgba(90,175,255,0.3);background:rgba(90,175,255,0.08);flex-shrink:0;}
 .plan-link-btn:hover{background:rgba(90,175,255,0.15);}
+
+/* Review tab */
+.review-summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;}
+.review-month-title{font-size:11px;font-family:var(--mono);color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}
+.review-goal-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.review-goal-row:last-child{border-bottom:none;}
+.review-goal-name{color:var(--muted);font-family:var(--mono);font-size:12px;width:80px;flex-shrink:0;}
+.review-wk-dots{display:flex;gap:4px;flex:1;justify-content:center;}
+.review-wk-dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);font-weight:500;}
+.review-wk-dot.hit{background:rgba(90,240,170,0.15);color:var(--green);border:1px solid rgba(90,240,170,0.3);}
+.review-wk-dot.miss{background:rgba(255,90,90,0.1);color:var(--red);border:1px solid rgba(255,90,90,0.2);}
+.review-wk-dot.future{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.review-wk-dot.partial{background:rgba(255,170,90,0.1);color:var(--orange);border:1px solid rgba(255,170,90,0.3);}
+.review-score{font-family:var(--mono);font-size:12px;width:40px;text-align:right;flex-shrink:0;}
+.review-score.all-hit{color:var(--green);}
+
+/* Weekly tracker rows */
+.week-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;overflow:hidden;}
+.week-row-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;}
+.week-row-header:active{background:var(--surface2);}
+.week-label{font-size:13px;font-weight:500;}
+.week-score-badge{font-size:11px;font-family:var(--mono);padding:3px 8px;border-radius:999px;}
+.week-score-badge.all{background:rgba(90,240,170,0.15);color:var(--green);}
+.week-score-badge.some{background:rgba(255,170,90,0.12);color:var(--orange);}
+.week-score-badge.none{background:rgba(255,90,90,0.1);color:var(--red);}
+.week-score-badge.prog{background:var(--accent-dim);color:var(--accent);}
+.week-chevron{font-size:12px;color:var(--muted);transition:transform 0.2s;}
+.week-chevron.open{transform:rotate(180deg);}
+.week-detail{display:none;border-top:1px solid var(--border);}
+.week-detail.open{display:block;}
+.week-detail-row{display:flex;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);font-size:13px;gap:8px;}
+.week-detail-row:last-child{border-bottom:none;}
+.wd-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+.wd-name{color:var(--muted);font-family:var(--mono);font-size:12px;width:80px;flex-shrink:0;}
+.wd-actual{font-weight:500;flex:1;}
+.wd-target{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.wd-shortfall{font-family:var(--mono);font-size:11px;color:var(--red);}
+
+/* Weight review */
+.weight-review-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0;}
+.weight-review-metric{background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px;}
+.weight-review-label{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:4px;}
+.weight-review-value{font-size:18px;font-weight:600;}
+.weight-review-value.good{color:var(--green);}
+.weight-review-value.warn{color:var(--orange);}
+.weight-review-value.neutral{color:var(--text);}
 </style>
 </head>
 <body>
@@ -198,6 +244,7 @@ select option{background:var(--surface2);}
   <div class="section active" id="tab-dashboard">
     <div id="streak-area"></div>
     <div class="card" id="dash-today-plan" style="margin-bottom:0;"></div>
+    <div class="card" id="dash-month-review" style="margin-top:12px;margin-bottom:0;"></div>
     <div class="sec-head" style="margin-top:12px;">Goal rings</div>
     <div class="rings-grid" id="rings-grid"></div>
     <div class="sec-head">Today</div>
@@ -354,6 +401,21 @@ select option{background:var(--surface2);}
     </div>
   </div>
 
+  <!-- REVIEW -->
+  <div class="section" id="tab-review">
+    <div class="sec-head" style="margin-top:4px;">This month</div>
+    <div id="review-month-summary"></div>
+
+    <div class="sec-head">Weekly tracker (last 12 weeks)</div>
+    <div id="review-weekly-list"></div>
+
+    <div class="sec-head">Weight progress</div>
+    <div class="card" id="review-weight"></div>
+
+    <div class="sec-head">Streak history</div>
+    <div class="card" id="review-streak"></div>
+  </div>
+
   <!-- PLAN -->
   <div class="section" id="tab-plan">
     <div class="today-plan-banner" id="plan-today-banner"></div>
@@ -386,6 +448,7 @@ select option{background:var(--surface2);}
   <button class="nav-btn" onclick="showTab('cardio',this)"><span class="nav-icon">▷</span>Cardio</button>
   <button class="nav-btn" onclick="showTab('pbs',this)"><span class="nav-icon">★</span>PBs</button>
   <button class="nav-btn" onclick="showTab('goals',this)"><span class="nav-icon">◎</span>Goals</button>
+  <button class="nav-btn" onclick="showTab('review',this)"><span class="nav-icon">📊</span>Review</button>
   <button class="nav-btn" onclick="showTab('plan',this)"><span class="nav-icon">📋</span>Plan</button>
   <button class="nav-btn" onclick="showTab('export',this)"><span class="nav-icon">↓</span>Data</button>
 </nav>
@@ -512,7 +575,7 @@ async function syncAll(){
 }
 function refreshCurrentTab(){
   const id=document.querySelector('.section.active')?.id?.replace('tab-','');
-  const map={dashboard:renderDashboard,workout:renderWorkoutLog,body:renderBodyLog,cardio:renderCardioLog,pbs:renderPBs,goals:populateGoalFields,export:renderExport,plan:renderPlan};
+  const map={dashboard:renderDashboard,workout:renderWorkoutLog,body:renderBodyLog,cardio:renderCardioLog,pbs:renderPBs,goals:populateGoalFields,export:renderExport,plan:renderPlan,review:renderReview};
   if(map[id])map[id]();
 }
 
@@ -803,6 +866,7 @@ function renderDashboard(){
 
   document.getElementById('rings-grid').innerHTML=rings.join('');
   renderTodayPlanOnDashboard();
+  renderMonthSummary();
 
   const todayC=cardioLogs.filter(c=>c.date===today());
   const latestW=bodyLogs[0]?.weight;
@@ -1204,6 +1268,283 @@ function renderTodayPlanOnDashboard(){
   }
 }
 
+
+
+// ── Review helpers ───────────────────────────────────────────
+function getWeekBounds(weeksAgo){
+  // Returns {start, end} ISO strings for a week, 0=current week
+  const d=new Date();
+  const day=d.getDay();
+  const diff=day===0?6:day-1;
+  const monThisWeek=new Date(d);
+  monThisWeek.setDate(d.getDate()-diff);
+  const mon=new Date(monThisWeek);
+  mon.setDate(monThisWeek.getDate()-(weeksAgo*7));
+  const sun=new Date(mon);
+  sun.setDate(mon.getDate()+6);
+  const iso=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+  return {start:iso(mon),end:iso(sun)};
+}
+
+function isCurrentWeek(bounds){
+  return bounds.start===getWeekBounds(0).start;
+}
+
+function calcWeekGoals(bounds){
+  // Returns {workouts, cardio, cals, steps, isPartial}
+  const inWeek=date=>date&&date>=bounds.start&&date<=bounds.end;
+  const wCount=[...new Set(workouts.filter(w=>inWeek(w.date)).map(w=>w.date))].length;
+  const cardioMins=cardioLogs.filter(c=>inWeek(c.date)).reduce((a,b)=>a+(parseInt(b.duration)||0),0);
+  const cals=[...workouts,...cardioLogs].filter(x=>inWeek(x.date)).reduce((a,b)=>a+(parseInt(b.cals)||0),0);
+  const steps=cardioLogs.filter(c=>inWeek(c.date)).reduce((a,b)=>a+(parseInt(b.steps)||0),0);
+  const partial=isCurrentWeek(bounds);
+  return {wCount,cardioMins,cals,steps,partial};
+}
+
+function evalWeekGoal(actual, target){
+  if(!target) return null; // goal not set
+  const hit = actual >= target;
+  const shortfall = target - actual;
+  return {hit, actual, target, shortfall};
+}
+
+function goalResults(bounds){
+  const d=calcWeekGoals(bounds);
+  return {
+    workouts: evalWeekGoal(d.wCount, goals.workoutsPerWeek||goals.workoutsPerMonth?(goals.workoutsPerWeek||Math.round((goals.workoutsPerMonth||0)/4)):null),
+    cardio:   evalWeekGoal(d.cardioMins, goals.cardioMinsPerWeek||null),
+    cals:     evalWeekGoal(d.cals, goals.calsBurnedPerWeek||null),
+    steps:    evalWeekGoal(d.steps, goals.dailySteps?goals.dailySteps*7:null),
+    partial:  d.partial
+  };
+}
+
+function fmtWeekLabel(bounds){
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const s=bounds.start.split('-').map(Number);
+  const e=bounds.end.split('-').map(Number);
+  return s[2]+' '+months[s[1]-1]+' – '+e[2]+' '+months[e[1]-1];
+}
+
+function scoreWeek(res){
+  const entries=Object.values(res).filter(v=>v&&typeof v==='object'&&'hit' in v);
+  const hits=entries.filter(v=>v.hit).length;
+  return {hits, total:entries.length};
+}
+
+// ── Dashboard month summary card ─────────────────────────────
+function renderMonthSummary(){
+  const el=document.getElementById('dash-month-review');
+  if(!el)return;
+  const now=new Date();
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthName=months[now.getMonth()]+' '+now.getFullYear();
+
+  // Find all weeks that overlap with current month
+  const monthStart=thisMonthStart();
+  const weeksInMonth=[];
+  for(let i=3;i>=0;i--){
+    const b=getWeekBounds(i);
+    // Include if week end is in this month or week start is in this month
+    if(b.end>=monthStart||b.start>=monthStart) weeksInMonth.push({bounds:b,weeksAgo:i});
+  }
+
+  const goalDefs=[
+    {key:'workouts',label:'Workouts',unit:'wk'},
+    {key:'cardio',label:'Cardio',unit:'min'},
+    {key:'cals',label:'Cal burn',unit:'kcal'},
+    {key:'steps',label:'Steps',unit:'steps'},
+  ];
+
+  // Build rows
+  const rows=goalDefs.map(gd=>{
+    const weekResults=weeksInMonth.map(w=>goalResults(w.bounds)[gd.key]);
+    const activeWeeks=weekResults.filter(r=>r!==null);
+    if(!activeWeeks.length) return null;
+    const totalWeeks=weeksInMonth.length;
+    const hitCount=activeWeeks.filter(r=>r.hit).length;
+    const allHit=hitCount===totalWeeks;
+    const dots=weeksInMonth.map((w,i)=>{
+      const r=weekResults[i];
+      if(!r) return `<span class="review-wk-dot future">·</span>`;
+      if(w.bounds.start===getWeekBounds(0).start) return `<span class="review-wk-dot partial" title="In progress">~</span>`;
+      return r.hit
+        ?`<span class="review-wk-dot hit">✓</span>`
+        :`<span class="review-wk-dot miss">✗</span>`;
+    }).join('');
+    // Last complete week shortfall
+    const lastComplete=weeksInMonth.filter(w=>!isCurrentWeek(w.bounds)).pop();
+    let shortfallNote='';
+    if(lastComplete){
+      const lr=goalResults(lastComplete.bounds)[gd.key];
+      if(lr&&!lr.hit) shortfallNote=`<span style="font-size:11px;color:var(--red);font-family:var(--mono);">-${lr.shortfall.toLocaleString()} ${gd.unit} last wk</span>`;
+    }
+    return `<div class="review-goal-row">
+      <span class="review-goal-name">${gd.label}</span>
+      <div class="review-wk-dots">${dots}</div>
+      <div style="text-align:right;min-width:90px;">${shortfallNote}<span class="review-score ${allHit?'all-hit':''}" style="display:block;">${hitCount}/${totalWeeks} wks${allHit?' ✓':''}</span></div>
+    </div>`;
+  }).filter(Boolean);
+
+  if(!rows.length){
+    el.innerHTML=`<div style="padding:14px 16px;font-size:13px;color:var(--muted);">Set goals to see your monthly review</div>`;
+    return;
+  }
+
+  el.innerHTML=`<div class="review-summary-card">
+    <div class="review-month-title">${monthName} · This month</div>
+    ${rows.join('')}
+  </div>`;
+}
+
+// ── Full review tab ───────────────────────────────────────────
+function renderReview(){
+  renderMonthSummary();
+  renderWeeklyTracker();
+  renderWeightReview();
+  renderStreakHistory();
+}
+
+function renderWeeklyTracker(){
+  const el=document.getElementById('review-weekly-list');
+  if(!el)return;
+  const goalDefs=[
+    {key:'workouts',label:'Workouts',icon:'↑',unitFn:(a,t)=>`${a} / ${t} sessions`},
+    {key:'cardio',   label:'Cardio',  icon:'▷',unitFn:(a,t)=>`${a} / ${t} min`},
+    {key:'cals',     label:'Cal burn',icon:'🔥',unitFn:(a,t)=>`${a.toLocaleString()} / ${t.toLocaleString()} kcal`},
+    {key:'steps',    label:'Steps',   icon:'👟',unitFn:(a,t)=>`${a.toLocaleString()} / ${t.toLocaleString()}`},
+  ];
+
+  let html='';
+  for(let i=0;i<12;i++){
+    const bounds=getWeekBounds(i);
+    const res=goalResults(bounds);
+    const {hits,total}=scoreWeek(res);
+    if(total===0) continue;
+    const partial=res.partial;
+    const label=fmtWeekLabel(bounds)+(partial?' (in progress)':'');
+    const badgeClass=partial?'prog':hits===total?'all':hits>0?'some':'none';
+    const badgeText=partial?`${hits}/${total} so far`:`${hits}/${total} goals`;
+    const weekId='week-'+i;
+
+    const detailRows=goalDefs.map(gd=>{
+      const r=res[gd.key];
+      if(!r) return '';
+      const icon=r.hit?'✓':'✗';
+      const iconColor=r.hit?'var(--green)':'var(--red)';
+      const shortfall=!r.hit?`<span class="wd-shortfall">-${Math.ceil(r.shortfall).toLocaleString()}</span>`:'';
+      return `<div class="week-detail-row">
+        <span class="wd-icon" style="color:${iconColor};">${icon}</span>
+        <span class="wd-name">${gd.label}</span>
+        <span class="wd-actual">${gd.unitFn(r.actual,r.target)}</span>
+        ${shortfall}
+      </div>`;
+    }).join('');
+
+    html+=`<div class="week-row">
+      <div class="week-row-header" onclick="toggleWeekRow('${weekId}')">
+        <span class="week-label">${label}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="week-score-badge ${badgeClass}">${badgeText}</span>
+          <span class="week-chevron" id="chev-${weekId}">▾</span>
+        </div>
+      </div>
+      <div class="week-detail" id="${weekId}">${detailRows}</div>
+    </div>`;
+  }
+  el.innerHTML=html||'<div style="color:var(--muted);font-size:13px;padding:8px 0;">No data yet — start logging!</div>';
+}
+
+function toggleWeekRow(id){
+  const detail=document.getElementById(id);
+  const chev=document.getElementById('chev-'+id);
+  if(!detail)return;
+  const open=detail.classList.toggle('open');
+  if(chev)chev.classList.toggle('open',open);
+}
+
+function renderWeightReview(){
+  const el=document.getElementById('review-weight');
+  if(!el)return;
+  if(!goals.startWeight||!goals.targetWeight){
+    el.innerHTML='<div style="color:var(--muted);font-size:13px;">Set a weight goal to see progress</div>';
+    return;
+  }
+  const latestW=bodyLogs[0]?.weight??goals.startWeight;
+  const total=Math.abs(goals.startWeight-goals.targetWeight);
+  const losing=goals.startWeight>goals.targetWeight;
+  const done=losing?(goals.startWeight-latestW):(latestW-goals.startWeight);
+  const pct=Math.max(0,Math.min(100,done/total*100));
+  const remaining=Math.abs(latestW-goals.targetWeight);
+
+  // Rate: kg per month based on bodyLogs history
+  const oldestLog=bodyLogs[bodyLogs.length-1];
+  let rateNote='';
+  if(oldestLog&&oldestLog.date&&oldestLog.weight&&oldestLog.date!==bodyLogs[0]?.date){
+    const s=oldestLog.date.split('-').map(Number);
+    const e=bodyLogs[0].date.split('-').map(Number);
+    const months=(e[0]-s[0])*12+(e[1]-s[1])+(e[2]-s[2])/30;
+    if(months>0){
+      const rate=Math.abs(oldestLog.weight-latestW)/months;
+      const neededRate=total/12;
+      const onTrack=rate>=neededRate*0.9;
+      rateNote=`<div class="weight-review-metric"><div class="weight-review-label">Avg rate</div><div class="weight-review-value ${onTrack?'good':'warn'}">${rate.toFixed(1)} kg/mo</div></div>
+        <div class="weight-review-metric"><div class="weight-review-label">Needed</div><div class="weight-review-value neutral">${neededRate.toFixed(1)} kg/mo</div></div>`;
+    }
+  }
+
+  // Progress bar
+  const barColor=pct>=100?'var(--green)':pct>=50?'var(--accent)':'var(--orange)';
+  el.innerHTML=`
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:6px;">
+        <span>${goals.startWeight} kg</span><span>${goals.targetWeight} kg</span>
+      </div>
+      <div style="height:8px;background:var(--surface2);border-radius:999px;overflow:hidden;">
+        <div style="height:100%;width:${pct.toFixed(1)}%;background:${barColor};border-radius:999px;transition:width 0.5s;"></div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--muted);font-family:var(--mono);margin-top:6px;">${pct.toFixed(0)}% of goal · ${remaining.toFixed(1)} kg to go</div>
+    </div>
+    <div class="weight-review-grid">
+      <div class="weight-review-metric"><div class="weight-review-label">Start</div><div class="weight-review-value neutral">${goals.startWeight} kg</div></div>
+      <div class="weight-review-metric"><div class="weight-review-label">Current</div><div class="weight-review-value ${done>0?'good':'warn'}">${latestW} kg</div></div>
+      <div class="weight-review-metric"><div class="weight-review-label">${losing?'Lost':'Gained'}</div><div class="weight-review-value ${done>0?'good':'warn'}">${Math.max(0,done).toFixed(1)} kg</div></div>
+      <div class="weight-review-metric"><div class="weight-review-label">Remaining</div><div class="weight-review-value neutral">${remaining.toFixed(1)} kg</div></div>
+      ${rateNote}
+    </div>`;
+}
+
+function renderStreakHistory(){
+  const el=document.getElementById('review-streak');
+  if(!el)return;
+  const activeDays=new Set([...workouts.map(w=>w.date),...cardioLogs.map(c=>c.date)]);
+  const allDates=[...activeDays].sort();
+  if(!allDates.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;">No active days logged yet</div>';return;}
+
+  // Calculate all streaks
+  let maxStreak=0,maxStart='',maxEnd='',cur=0,curStart='';
+  let prev=null;
+  for(const d of allDates){
+    if(prev){
+      const p=new Date(prev+'T12:00:00'),c=new Date(d+'T12:00:00');
+      const diff=Math.round((c-p)/(86400000));
+      if(diff===1){cur++;if(cur>maxStreak){maxStreak=cur;maxStart=curStart;maxEnd=d;}}
+      else{cur=1;curStart=d;}
+    } else {cur=1;curStart=d;}
+    prev=d;
+  }
+  if(cur>maxStreak){maxStreak=cur;maxStart=curStart;maxEnd=prev;}
+
+  const currentStreak=calcStreak();
+  const totalActiveDays=activeDays.size;
+
+  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+    <div class="weight-review-metric"><div class="weight-review-label">Current streak</div><div class="weight-review-value ${currentStreak>0?'good':'neutral'}">${currentStreak} day${currentStreak!==1?'s':''}</div></div>
+    <div class="weight-review-metric"><div class="weight-review-label">Longest streak</div><div class="weight-review-value good">${maxStreak} day${maxStreak!==1?'s':''}</div></div>
+    <div class="weight-review-metric"><div class="weight-review-label">Total active days</div><div class="weight-review-value neutral">${totalActiveDays}</div></div>
+    <div class="weight-review-metric"><div class="weight-review-label">Best period</div><div class="weight-review-value neutral" style="font-size:13px;">${maxStart?fmt(maxStart)+' – '+fmt(maxEnd):'—'}</div></div>
+  </div>`;
+}
 
 // ── Autocomplete ────────────────────────────────────────────
 function getWorkoutSuggestions(){
