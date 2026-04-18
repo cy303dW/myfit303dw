@@ -548,10 +548,26 @@ async function syncGoalsToSheet(){
   }
 }
 
+async function syncPlanToSheet(){
+  setSyncStatus('syncing','Syncing…');
+  try{
+    // Strip done states before saving so plan is always "fresh" on new device
+    const planToSave=JSON.parse(JSON.stringify(plan));
+    Object.values(planToSave).forEach(d=>{
+      if(d.exercises)d.exercises=d.exercises.map(e=>({...e,done:false}));
+    });
+    await sheetPost({type:'Plan',action:'replace',rows:[['plan',JSON.stringify(planToSave)]]});
+    await flushQueue();setSyncStatus('ok','Synced ✓');
+  }catch(e){
+    enqueue({type:'Plan',action:'replace',rows:[['plan',JSON.stringify(plan)]]});
+    setSyncStatus('error','Offline — queued');
+  }
+}
+
 async function syncAll(){
   setSyncStatus('syncing','Syncing…');
   try{
-    const[wR,bR,cR,gR]=await Promise.all([sheetGet('Workouts'),sheetGet('Body'),sheetGet('Cardio'),sheetGet('Goals')]);
+    const[wR,bR,cR,gR,pR]=await Promise.all([sheetGet('Workouts'),sheetGet('Body'),sheetGet('Cardio'),sheetGet('Goals'),sheetGet('Plan')]);
     const n=v=>{const x=parseFloat(v);return isNaN(x)?0:x;};
     const nn=v=>{const x=parseFloat(v);return isNaN(x)||x===0?null:x;};
     workouts=wR.map(r=>({id:n(r['ID'])||Date.now(),date:parseDate(r['Date']),exercise:String(r['Exercise']||''),sets:n(r['Sets']),reps:n(r['Reps']),weight:n(r['Weight (kg)']),cals:n(r['Calories Burned']),notes:String(r['Notes']||'')})).filter(r=>r.exercise).sort((a,b)=>b.id-a.id);
@@ -568,6 +584,21 @@ async function syncAll(){
       }
     }
     save('fl_workouts',workouts);save('fl_body',bodyLogs);save('fl_cardio',cardioLogs);
+
+    // Parse plan from Sheets
+    if(pR.length){
+      const planRow=pR.find(r=>String(r['Key']||r['key']||Object.values(r)[0])==='plan');
+      const planData=planRow?planRow['Value']||planRow['value']||Object.values(planRow)[1]:null;
+      if(planData){
+        try{
+          const parsed=JSON.parse(planData);
+          if(parsed&&typeof parsed==='object'){
+            plan=parsed;
+            save('fl_plan',plan);
+          }
+        }catch(e){}
+      }
+    }
 
     await flushQueue();setSyncStatus('ok','Synced to Google Sheets ✓');toast('Synced ✓');
     refreshCurrentTab();
@@ -1232,6 +1263,7 @@ function savePlanDay(){
   plan[planEditDay].exercises=(plan[planEditDay].exercises||[]).map(e=>({...e,done:false}));
   save('fl_plan',plan);
   toast('Plan saved ✓');
+  syncPlanToSheet();
   renderPlan();
 }
 
