@@ -169,6 +169,18 @@ select option{background:var(--surface2);}
 .today-plan-focus{font-size:20px;font-weight:600;margin-bottom:4px;}
 .today-plan-sub{font-size:12px;color:var(--muted);font-family:var(--mono);}
 
+
+/* Nutrition / Health tab */
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-family:var(--mono);background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.badge.Breakfast{color:var(--orange);border-color:rgba(255,170,90,0.3);background:rgba(255,170,90,0.08);}
+.badge.Lunch{color:var(--green);border-color:rgba(90,240,170,0.3);background:rgba(90,240,170,0.08);}
+.badge.Dinner{color:var(--blue);border-color:rgba(90,175,255,0.3);background:rgba(90,175,255,0.08);}
+.badge.Snack{color:var(--muted);}
+.health-totals{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.health-total{background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px;}
+.health-total-label{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:4px;}
+.health-total-value{font-size:20px;font-weight:600;}
+
 /* Autocomplete */
 .ac-wrap{position:relative;}
 .ac-list{position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);z-index:200;max-height:180px;overflow-y:auto;display:none;margin-top:2px;}
@@ -283,16 +295,32 @@ select option{background:var(--surface2);}
     <div class="card"><div class="log-list" id="workout-log"></div></div>
   </div>
 
-  <!-- BODY -->
-  <div class="section" id="tab-body">
+  <!-- HEALTH -->
+  <div class="section" id="tab-health">
     <div class="card">
       <div class="card-label">Body metrics</div>
       <div class="form-group"><label class="form-label">Weight (kg)</label><input id="b-weight" type="number" step="0.1" placeholder="e.g. 70.5"></div>
       <div class="form-group"><label class="form-label">Body fat %</label><input id="b-fat" type="number" step="0.1" placeholder="optional"></div>
-      <button class="btn btn-primary" onclick="logBody()">Save</button>
+      <button class="btn btn-primary" onclick="logBody()">Save body metrics</button>
     </div>
-    <div class="sec-head">History</div>
+    <div class="sec-head">Body history</div>
     <div class="card"><div class="log-list" id="body-log"></div></div>
+
+    <div class="sec-head">Log meal</div>
+    <div class="health-totals" id="nutrition-totals-today"></div>
+    <div class="card">
+      <div class="form-group"><label class="form-label">Meal</label>
+        <select id="n-meal"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Food</label><input id="n-food" placeholder="e.g. Chicken breast with rice"></div>
+      <div class="form-row">
+        <div><label class="form-label">Calories</label><input id="n-cal" type="number" min="0" placeholder="e.g. 450"></div>
+        <div><label class="form-label">Protein (g)</label><input id="n-protein" type="number" min="0" placeholder="optional"></div>
+      </div>
+      <button class="btn btn-primary" onclick="logNutrition()">Add meal</button>
+    </div>
+    <div class="sec-head">Today's meals</div>
+    <div class="card"><div class="log-list" id="nutrition-log"></div></div>
   </div>
 
   <!-- CARDIO -->
@@ -320,17 +348,7 @@ select option{background:var(--surface2);}
     <div class="card"><div class="log-list" id="cardio-log"></div></div>
   </div>
 
-  <!-- PERSONAL BESTS -->
-  <div class="section" id="tab-pbs">
-    <div class="card" style="margin-top:4px;">
-      <div class="card-label">Workout personal bests</div>
-      <div class="log-list" id="pb-list"></div>
-    </div>
-    <div class="card">
-      <div class="card-label">Best cardio sessions</div>
-      <div class="log-list" id="pb-cardio-list"></div>
-    </div>
-  </div>
+
 
   <!-- GOALS -->
   <div class="section" id="tab-goals">
@@ -414,6 +432,20 @@ select option{background:var(--surface2);}
 
     <div class="sec-head">Streak history</div>
     <div class="card" id="review-streak"></div>
+
+    <div class="sec-head" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="togglePBSection()">
+      Personal bests <span id="pb-chevron" style="font-size:12px;color:var(--muted);">▾</span>
+    </div>
+    <div id="pb-section" style="display:none;">
+      <div class="card">
+        <div class="card-label">Workout personal bests</div>
+        <div class="log-list" id="pb-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Best cardio sessions</div>
+        <div class="log-list" id="pb-cardio-list"></div>
+      </div>
+    </div>
   </div>
 
   <!-- PLAN -->
@@ -444,11 +476,10 @@ select option{background:var(--surface2);}
 <nav class="nav">
   <button class="nav-btn active" onclick="showTab('dashboard',this)"><span class="nav-icon">◈</span>Home</button>
   <button class="nav-btn" onclick="showTab('workout',this)"><span class="nav-icon">↑</span>Workout</button>
-  <button class="nav-btn" onclick="showTab('body',this)"><span class="nav-icon">◎</span>Body</button>
   <button class="nav-btn" onclick="showTab('cardio',this)"><span class="nav-icon">▷</span>Cardio</button>
-  <button class="nav-btn" onclick="showTab('pbs',this)"><span class="nav-icon">★</span>PBs</button>
-  <button class="nav-btn" onclick="showTab('goals',this)"><span class="nav-icon">◎</span>Goals</button>
+  <button class="nav-btn" onclick="showTab('health',this)"><span class="nav-icon">♡</span>Health</button>
   <button class="nav-btn" onclick="showTab('review',this)"><span class="nav-icon">📊</span>Review</button>
+  <button class="nav-btn" onclick="showTab('goals',this)"><span class="nav-icon">◎</span>Goals</button>
   <button class="nav-btn" onclick="showTab('plan',this)"><span class="nav-icon">📋</span>Plan</button>
   <button class="nav-btn" onclick="showTab('export',this)"><span class="nav-icon">↓</span>Data</button>
 </nav>
@@ -480,10 +511,11 @@ function loadArr(k){try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(
 function load(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch(e){return null;}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 
-let workouts    =loadArr('fl_workouts');
-let bodyLogs    =loadArr('fl_body');
-let cardioLogs  =loadArr('fl_cardio');
-let pendingQueue=loadArr('fl_pending');
+let workouts      =loadArr('fl_workouts');
+let bodyLogs      =loadArr('fl_body');
+let cardioLogs    =loadArr('fl_cardio');
+let nutritionLogs =loadArr('fl_nutrition');
+let pendingQueue  =loadArr('fl_pending');
 let goals       =load('fl_goals')||{startWeight:null,targetWeight:null,dailySteps:null,workoutFreq:'weekly',workoutsPerWeek:null,workoutsPerMonth:null,cardioMinsPerWeek:null,calsBurnedPerWeek:null};
 let freqMode    =goals.workoutFreq||'weekly';
 let pendingImport=null;
@@ -567,7 +599,7 @@ async function syncPlanToSheet(){
 async function syncAll(){
   setSyncStatus('syncing','Syncing…');
   try{
-    const[wR,bR,cR,gR,pR]=await Promise.all([sheetGet('Workouts'),sheetGet('Body'),sheetGet('Cardio'),sheetGet('Goals'),sheetGet('Plan')]);
+    const[wR,bR,cR,nR,gR,pR]=await Promise.all([sheetGet('Workouts'),sheetGet('Body'),sheetGet('Cardio'),sheetGet('Nutrition'),sheetGet('Goals'),sheetGet('Plan')]);
     const n=v=>{const x=parseFloat(v);return isNaN(x)?0:x;};
     const nn=v=>{const x=parseFloat(v);return isNaN(x)||x===0?null:x;};
     workouts=wR.map(r=>({id:n(r['ID'])||Date.now(),date:parseDate(r['Date']),exercise:String(r['Exercise']||''),sets:n(r['Sets']),reps:n(r['Reps']),weight:n(r['Weight (kg)']),cals:n(r['Calories Burned']),notes:String(r['Notes']||'')})).filter(r=>r.exercise).sort((a,b)=>b.id-a.id);
@@ -583,7 +615,8 @@ async function syncAll(){
         save('fl_goals',goals);
       }
     }
-    save('fl_workouts',workouts);save('fl_body',bodyLogs);save('fl_cardio',cardioLogs);
+    nutritionLogs=nR.map(r=>({id:n(r['ID'])||Date.now(),date:parseDate(r['Date']),meal:String(r['Meal']||''),food:String(r['Food']||''),calories:n(r['Calories']),protein:n(r['Protein (g)'])})).filter(r=>r.food).sort((a,b)=>b.id-a.id);
+    save('fl_workouts',workouts);save('fl_body',bodyLogs);save('fl_cardio',cardioLogs);save('fl_nutrition',nutritionLogs);
 
     // Parse plan from Sheets
     if(pR.length){
@@ -606,7 +639,7 @@ async function syncAll(){
 }
 function refreshCurrentTab(){
   const id=document.querySelector('.section.active')?.id?.replace('tab-','');
-  const map={dashboard:renderDashboard,workout:renderWorkoutLog,body:renderBodyLog,cardio:renderCardioLog,pbs:renderPBs,goals:populateGoalFields,export:renderExport,plan:renderPlan,review:renderReview};
+  const map={dashboard:renderDashboard,workout:renderWorkoutLog,cardio:renderCardioLog,health:renderHealth,goals:populateGoalFields,export:renderExport,plan:renderPlan,review:renderReview};
   if(map[id])map[id]();
 }
 
@@ -1061,11 +1094,29 @@ function logCardio(){
   toast('Saved ✓');renderCardioLog();
   sendToSheet({type:'Cardio',action:'add',row:[item.id,item.date,item.steps,item.activity,item.duration,item.distance||'',item.cals]});
 }
+function logNutrition(){
+  const food=document.getElementById('n-food').value.trim();
+  if(!food){toast('Enter a food item',true);return;}
+  const item={id:Date.now(),date:today(),
+    meal:document.getElementById('n-meal').value,
+    food,
+    calories:parseInt(document.getElementById('n-cal').value)||0,
+    protein:parseFloat(document.getElementById('n-protein').value)||0};
+  nutritionLogs.unshift(item);save('fl_nutrition',nutritionLogs);
+  document.getElementById('n-food').value='';
+  document.getElementById('n-cal').value='';
+  document.getElementById('n-protein').value='';
+  toast('Meal logged ✓');
+  renderNutritionSection();
+  sendToSheet({type:'Nutrition',action:'add',row:[item.id,item.date,item.meal,item.food,item.calories,item.protein]});
+}
+
 function delItem(type,id){
-  const map={workout:'Workouts',body:'Body',cardio:'Cardio'};
+  const map={workout:'Workouts',body:'Body',cardio:'Cardio',nutrition:'Nutrition'};
   if(type==='workout'){workouts=workouts.filter(x=>x.id!==id);save('fl_workouts',workouts);renderWorkoutLog();}
   if(type==='body'){bodyLogs=bodyLogs.filter(x=>x.id!==id);save('fl_body',bodyLogs);renderBodyLog();}
   if(type==='cardio'){cardioLogs=cardioLogs.filter(x=>x.id!==id);save('fl_cardio',cardioLogs);renderCardioLog();}
+  if(type==='nutrition'){nutritionLogs=nutritionLogs.filter(x=>x.id!==id);save('fl_nutrition',nutritionLogs);renderNutritionSection();}
   sendToSheet({type:map[type],action:'delete',id});
 }
 
@@ -1090,6 +1141,32 @@ function renderBodyLog(){
       <button class="del-btn" onclick="delItem('body',${b.id})">×</button>
     </div>`).join('');
 }
+
+function renderNutritionSection(){
+  const todayItems=nutritionLogs.filter(n=>n.date===today());
+  const totalCal=todayItems.reduce((a,b)=>a+(b.calories||0),0);
+  const totalProt=todayItems.reduce((a,b)=>a+(b.protein||0),0);
+  const totEl=document.getElementById('nutrition-totals-today');
+  if(totEl) totEl.innerHTML=`
+    <div class="health-total"><div class="health-total-label">Calories today</div><div class="health-total-value">${totalCal}<span style="font-size:13px;color:var(--muted);font-weight:400;"> kcal</span></div></div>
+    <div class="health-total"><div class="health-total-label">Protein today</div><div class="health-total-value">${Math.round(totalProt)}<span style="font-size:13px;color:var(--muted);font-weight:400;"> g</span></div></div>`;
+  const el=document.getElementById('nutrition-log');
+  if(!el)return;
+  if(!todayItems.length){el.innerHTML='<div class="empty"><div class="empty-icon">◆</div>Nothing logged today</div>';return;}
+  el.innerHTML=todayItems.map(n=>`
+    <div class="log-item">
+      <div>
+        <div class="log-name">${n.food}</div>
+        <div class="log-meta"><span class="badge ${n.meal}">${n.meal}</span>${n.calories?' · '+n.calories+' kcal':''}${n.protein?' · '+n.protein+'g protein':''}</div>
+      </div>
+      <button class="del-btn" onclick="delItem('nutrition',${n.id})">×</button>
+    </div>`).join('');
+}
+
+function renderHealth(){
+  renderBodyLog();
+  renderNutritionSection();
+}
 function renderCardioLog(){
   const el=document.getElementById('cardio-log');
   if(!cardioLogs.length){el.innerHTML='<div class="empty"><div class="empty-icon">▷</div>No cardio yet</div>';return;}
@@ -1113,6 +1190,7 @@ function downloadCSV(filename,csv){
 function exportWorkouts(){downloadCSV('fitlog_workouts.csv',toCSV(['Date','Exercise','Sets','Reps','Weight (kg)','Calories Burned','Notes'],workouts.map(w=>[w.date,w.exercise,w.sets,w.reps,w.weight,w.cals||'',w.notes])));toast('Workouts CSV downloaded ✓');}
 function exportBody(){downloadCSV('fitlog_body.csv',toCSV(['Date','Weight (kg)','Body Fat (%)'],bodyLogs.map(b=>[b.date,b.weight||'',b.fat||''])));toast('Body CSV downloaded ✓');}
 function exportCardio(){downloadCSV('fitlog_cardio.csv',toCSV(['Date','Steps','Activity','Duration (min)','Distance (km)','Calories Burned'],cardioLogs.map(c=>[c.date,c.steps,c.activity,c.duration,c.distance||'',c.cals||''])));toast('Cardio CSV downloaded ✓');}
+function exportNutrition(){downloadCSV('fitlog_nutrition.csv',toCSV(['Date','Meal','Food','Calories','Protein (g)'],nutritionLogs.map(n=>[n.date,n.meal,n.food,n.calories,n.protein||''])));toast('Nutrition CSV downloaded ✓');}
 function exportGoals(){
   const rows=[
     ['startWeight',goals.startWeight||''],
@@ -1127,13 +1205,14 @@ function exportGoals(){
   downloadCSV('fitlog_goals.csv',toCSV(['Key','Value'],rows));
   toast('Goals CSV downloaded ✓');
 }
-function exportAll(){exportWorkouts();setTimeout(exportBody,300);setTimeout(exportCardio,600);setTimeout(exportGoals,900);}
+function exportAll(){exportWorkouts();setTimeout(exportBody,300);setTimeout(exportCardio,600);setTimeout(exportNutrition,900);setTimeout(exportGoals,1200);}
 
 function renderExport(){
   document.getElementById('export-cards').innerHTML=`
     <div class="export-row"><div><div class="export-name">Workouts</div><div class="export-count">${workouts.length} entries</div></div><button class="export-dl" onclick="exportWorkouts()">Download CSV</button></div>
     <div class="export-row"><div><div class="export-name">Body metrics</div><div class="export-count">${bodyLogs.length} entries</div></div><button class="export-dl" onclick="exportBody()">Download CSV</button></div>
     <div class="export-row"><div><div class="export-name">Cardio</div><div class="export-count">${cardioLogs.length} entries</div></div><button class="export-dl" onclick="exportCardio()">Download CSV</button></div>
+    <div class="export-row"><div><div class="export-name">Nutrition</div><div class="export-count">${nutritionLogs.length} entries</div></div><button class="export-dl" onclick="exportNutrition()">Download CSV</button></div>
     <div class="export-row"><div><div class="export-name">Goals</div><div class="export-count">1 entry</div></div><button class="export-dl" onclick="exportGoals()">Download CSV</button></div>`;
 }
 
@@ -1435,6 +1514,16 @@ function renderReview(){
   renderWeeklyTracker();
   renderWeightReview();
   renderStreakHistory();
+  renderPBs();
+}
+
+function togglePBSection(){
+  const sec=document.getElementById('pb-section');
+  const chev=document.getElementById('pb-chevron');
+  if(!sec)return;
+  const open=sec.style.display==='none';
+  sec.style.display=open?'block':'none';
+  if(chev)chev.textContent=open?'▴':'▾';
 }
 
 function renderWeeklyTracker(){
@@ -1472,6 +1561,20 @@ function renderWeeklyTracker(){
         ${shortfall}
       </div>`;
     }).join('');
+    // Net calorie balance row
+    const inWeekN=date=>date&&date>=bounds.start&&date<=bounds.end;
+    const calIntake=nutritionLogs.filter(n=>inWeekN(n.date)).reduce((a,b)=>a+(b.calories||0),0);
+    const calBurned=[...workouts,...cardioLogs].filter(x=>inWeekN(x.date)).reduce((a,b)=>a+(parseInt(b.cals)||0),0);
+    const netBal=calBurned-calIntake;
+    const netColor=netBal>=0?'var(--green)':'var(--red)';
+    const netLabel=netBal>=0?'deficit':'surplus';
+    const netRow=calIntake>0||calBurned>0?`
+      <div class="week-detail-row" style="background:var(--surface2);">
+        <span class="wd-icon">⚖</span>
+        <span class="wd-name" style="color:var(--text);">Net cal</span>
+        <span class="wd-actual">${calBurned.toLocaleString()} burned · ${calIntake.toLocaleString()} consumed</span>
+        <span style="font-family:var(--mono);font-size:11px;color:${netColor};">${netBal>=0?'+':''}${netBal.toLocaleString()} (${netLabel})</span>
+      </div>`:'';
 
     html+=`<div class="week-row">
       <div class="week-row-header" onclick="toggleWeekRow('${weekId}')">
@@ -1481,7 +1584,7 @@ function renderWeeklyTracker(){
           <span class="week-chevron" id="chev-${weekId}">▾</span>
         </div>
       </div>
-      <div class="week-detail" id="${weekId}">${detailRows}</div>
+      <div class="week-detail" id="${weekId}">${detailRows}${netRow}</div>
     </div>`;
   }
   el.innerHTML=html||'<div style="color:var(--muted);font-size:13px;padding:8px 0;">No data yet — start logging!</div>';
@@ -1611,6 +1714,7 @@ function selectAC(inputId,listId,el){
 // ── Init ─────────────────────────────────────────────────────
 renderDashboard();
 renderPlan();
+renderHealth();
 syncAll();
 </script>
 </body>
